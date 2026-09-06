@@ -1,0 +1,1559 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RehabStroke AI — Monitoring Rehabilitasi Pasca-Stroke</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <style>
+      :root {
+        --bg-base: #f8fafd;
+        --bg-card: #ffffff;
+        --sidebar-bg: #0f172a;
+        --accent-blue: #3b82f6;
+        --accent-dark: #1d4ed8;
+        --text-primary: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --score-3: #22c55e;
+        --score-2: #eab308;
+        --score-1: #f97316;
+        --score-0: #ef4444;
+        --glow-blue: rgba(59, 130, 246, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: var(--bg-base);
+        color: var(--text-primary);
+        margin: 0;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      /* ---- Scrollbar ---- */
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 99px;
+      }
+
+      /* ---- Layout ---- */
+      #app {
+        display: grid;
+        grid-template-columns: 260px 1fr 300px;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* =============== SIDEBAR =============== */
+      #sidebar {
+        background: var(--sidebar-bg);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 0;
+        position: relative;
+      }
+
+      .sidebar-header {
+        padding: 24px 20px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .logo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+      }
+
+      .sidebar-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 18px;
+        color: #ffffff;
+        line-height: 1.2;
+      }
+
+      .sidebar-subtitle {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 400;
+        margin-top: 2px;
+        line-height: 1.4;
+      }
+
+      .sidebar-section-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #475569;
+        padding: 16px 20px 8px;
+      }
+
+      .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 20px;
+        margin: 1px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #94a3b8;
+        font-size: 13.5px;
+        font-weight: 500;
+        border: 1px solid transparent;
+      }
+
+      .menu-item:hover {
+        background: rgba(59, 130, 246, 0.08);
+        color: #cbd5e1;
+      }
+
+      .menu-item.active {
+        background: rgba(59, 130, 246, 0.18);
+        color: #ffffff;
+        border-color: rgba(59, 130, 246, 0.3);
+      }
+
+      .menu-item .menu-num {
+        width: 22px;
+        height: 22px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-family: "JetBrains Mono", monospace;
+        flex-shrink: 0;
+      }
+
+      .menu-item.active .menu-num {
+        background: var(--accent-blue);
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding: 16px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .status-dot.green {
+        background: #22c55e;
+        box-shadow: 0 0 8px #22c55e;
+        animation: pulse-green 2s infinite;
+      }
+      .status-dot.red {
+        background: #ef4444;
+      }
+
+      @keyframes pulse-green {
+        0%,
+        100% {
+          opacity: 1;
+          box-shadow: 0 0 6px #22c55e;
+        }
+        50% {
+          opacity: 0.6;
+          box-shadow: 0 0 12px #22c55e;
+        }
+      }
+
+      /* =============== MAIN DASHBOARD =============== */
+      #main {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 20px 20px 20px 24px;
+        gap: 16px;
+      }
+
+      .dash-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+
+      .dash-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: var(--text-primary);
+      }
+
+      .dash-sub {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .datetime-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+      }
+
+      #live-time {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      #live-date {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      /* ---- Cards ---- */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.04),
+          0 4px 12px rgba(0, 0, 0, 0.03);
+      }
+
+      /* Active movement card */
+      .active-move-card {
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .move-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      #active-movement-name {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: 3px;
+        transition: all 0.3s ease;
+      }
+
+      .mqtt-indicator {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 12px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 99px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #16a34a;
+      }
+
+      .mqtt-indicator.disconnected {
+        background: #fff1f2;
+        border-color: #fecdd3;
+        color: #dc2626;
+      }
+
+      /* Score card */
+      .score-card {
+        padding: 28px 24px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s ease;
+      }
+
+      .score-card-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+
+      #score-display {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 96px;
+        font-weight: 700;
+        line-height: 1;
+        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      #score-label {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin-top: 8px;
+        min-height: 22px;
+        transition: all 0.3s ease;
+      }
+
+      .score-bg-blob {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        opacity: 0.06;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        transition: background 0.5s ease;
+        pointer-events: none;
+      }
+
+      .score-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+      }
+
+      /* Charts */
+      .chart-wrapper {
+        padding: 16px;
+      }
+
+      .chart-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 10px;
+      }
+
+      .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 150px !important;
+      }
+
+      /* =============== RIGHT PANEL =============== */
+      #right-panel {
+        border-left: 1px solid var(--border);
+        background: var(--bg-card);
+        height: 100vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        padding: 20px 16px;
+        gap: 14px;
+      }
+
+      .panel-section-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 10px;
+      }
+
+      .sensor-mini-card {
+        padding: 12px 14px;
+        background: var(--bg-base);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 8px;
+      }
+
+      .sensor-mini-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .sensor-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .sensor-cell {
+        text-align: center;
+      }
+
+      .sensor-cell-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9.5px;
+        color: var(--text-muted);
+        display: block;
+      }
+
+      .sensor-cell-val {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        transition: color 0.2s;
+      }
+
+      /* History table */
+      .history-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .history-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+
+      .search-box {
+        flex: 1;
+        padding: 7px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+        outline: none;
+        background: var(--bg-base);
+        color: var(--text-primary);
+        font-family: "DM Sans", sans-serif;
+      }
+
+      .search-box:focus {
+        border-color: var(--accent-blue);
+      }
+
+      .btn-download {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        background: var(--accent-blue);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: "DM Sans", sans-serif;
+        white-space: nowrap;
+      }
+
+      .btn-download:hover {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+      }
+
+      .history-table-wrap {
+        overflow-y: auto;
+        flex: 1;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      thead th {
+        padding: 9px 10px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        background: var(--bg-base);
+        position: sticky;
+        top: 0;
+        cursor: pointer;
+        user-select: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      thead th:hover {
+        color: var(--accent-blue);
+      }
+
+      tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s;
+      }
+      tbody tr:hover {
+        background: #f8fafd;
+      }
+      tbody td {
+        padding: 8px 10px;
+      }
+
+      .score-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 12px;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .score-badge.s3 {
+        background: #dcfce7;
+        color: #16a34a;
+      }
+      .score-badge.s2 {
+        background: #fef9c3;
+        color: #ca8a04;
+      }
+      .score-badge.s1 {
+        background: #ffedd5;
+        color: #ea580c;
+      }
+      .score-badge.s0 {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 2px 0;
+        font-size: 11.5px;
+        color: var(--text-muted);
+      }
+
+      .page-btn {
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: "DM Sans", sans-serif;
+        transition: all 0.15s;
+      }
+
+      .page-btn:hover:not(:disabled) {
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+      }
+      .page-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* ---- Score color classes ---- */
+      .score-color-3 {
+        color: var(--score-3);
+      }
+      .score-color-2 {
+        color: var(--score-2);
+      }
+      .score-color-1 {
+        color: var(--score-1);
+      }
+      .score-color-0 {
+        color: var(--score-0);
+      }
+
+      .score-bg-3 {
+        background: var(--score-3);
+      }
+      .score-bg-2 {
+        background: var(--score-2);
+      }
+      .score-bg-1 {
+        background: var(--score-1);
+      }
+      .score-bg-0 {
+        background: var(--score-0);
+      }
+
+      /* Score animation */
+      @keyframes scorePop {
+        0% {
+          transform: scale(0.8);
+          opacity: 0.4;
+        }
+        60% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .score-pop {
+        animation: scorePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      @keyframes fadeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .fade-in {
+        animation: fadeSlideIn 0.25s ease;
+      }
+
+      /* MQTT status in header */
+      #mqtt-dot {
+        transition: all 0.3s;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- ========== SIDEBAR ========== -->
+      <aside id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-badge">
+            <div class="logo-icon">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div>
+              <div class="sidebar-title">RehabStroke AI</div>
+            </div>
+          </div>
+          <div
+            class="sidebar-subtitle"
+            style="color: #475569; font-size: 11.5px; line-height: 1.5"
+          >
+            Monitoring Rehabilitasi<br />Pasca-Stroke · ARAT System
+          </div>
+        </div>
+
+        <div class="sidebar-section-label">Model Gerakan ARAT</div>
+
+        <nav id="menu-nav">
+          {% set labels = [
+           ("hand_to_mouth",    "Hand to Mouth",     "1"),
+           ("hand_to_tophead",  "Hand to Top Head",  "2"),
+           ("hand_to_backhead", "Hand to Back Head", "3"),
+           ("cup",              "Cup",               "4"),
+           ("big_tube",         "Big Tube",          "5"),
+           ("small_tube",       "Small Tube",        "6"),
+           ("ring",             "Ring",              "7"),
+          ] %} {% for key, label, num in labels %}
+          <div
+            class="menu-item {% if loop.first %}active{% endif %}"
+            data-key="{{ key }}"
+            onclick="selectModel('{{ key }}', this)"
+          >
+            <span class="menu-num">{{ num }}</span>
+            <span>{{ label }}</span>
+          </div>
+          {% endfor %}
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-section-label" style="padding: 0 0 8px">
+            Status Model
+          </div>
+          <div class="status-badge">
+            <div class="status-dot green" id="model-status-dot"></div>
+            <div>
+              <div
+                id="model-status-text"
+                style="font-size: 12.5px; font-weight: 600; color: #cbd5e1"
+              >
+                Ready
+              </div>
+              <div
+                id="model-status-sub"
+                style="font-size: 11px; color: #475569; margin-top: 1px"
+              >
+                hand_to_mouth
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px" class="status-badge">
+            <div class="status-dot red" id="mqtt-status-dot"></div>
+            <div>
+              <div
+                id="mqtt-status-text"
+                style="font-size: 12.5px; font-weight: 600; color: #cbd5e1"
+              >
+                Connecting...
+              </div>
+              <div style="font-size: 11px; color: #475569; margin-top: 1px">
+                broker.emqx.io
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ========== MAIN DASHBOARD ========== -->
+      <main id="main">
+        <!-- Header -->
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">
+              Dashboard Monitoring Rehabilitasi Pasca-Stroke
+            </div>
+            <div class="dash-sub">
+              Action Research Arm Test (ARAT) · IoT & Machine Learning
+            </div>
+          </div>
+          <div class="datetime-badge">
+            <div id="live-time">--:--:--</div>
+            <div id="live-date">--- --- ----</div>
+          </div>
+        </div>
+
+        <!-- Active Movement Card -->
+        <div class="card active-move-card">
+          <div>
+            <div class="move-label">Gerakan Aktif</div>
+            <div id="active-movement-name">HAND TO MOUTH</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px">
+            <div id="mqtt-badge" class="mqtt-indicator disconnected">
+              <div
+                id="mqtt-dot"
+                style="
+                  width: 7px;
+                  height: 7px;
+                  border-radius: 50%;
+                  background: currentColor;
+                "
+              ></div>
+              <span id="mqtt-badge-text">Disconnected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Score Card -->
+        <div class="card score-card" id="score-card">
+          <div class="score-bg-blob score-bg-3" id="score-blob"></div>
+          <div class="score-card-label">Hasil Prediksi AI · Skor ARAT</div>
+          <div id="score-display" class="score-color-3">—</div>
+          <div id="score-label" style="color: var(--text-muted)">
+            Menunggu Data Sensor...
+          </div>
+          <div
+            id="score-pill"
+            class="score-pill"
+            style="background: #f1f5f9; color: var(--text-muted)"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Initializing...
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="card chart-wrapper">
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 600;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.07em;
+              margin-bottom: 12px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+            >
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            Realtime Sensor Monitoring
+          </div>
+          <div class="charts-grid">
+            <div>
+              <div class="chart-title">Sensor 1 — Lengan Atas</div>
+              <canvas id="chart-sensor1"></canvas>
+            </div>
+            <div>
+              <div class="chart-title">Sensor 2 — Pergelangan Tangan</div>
+              <canvas id="chart-sensor2"></canvas>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========== RIGHT PANEL ========== -->
+      <aside id="right-panel">
+        <!-- Sensor Values -->
+        <div>
+          <div class="panel-section-title">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--accent-blue)"
+              stroke-width="2.2"
+            >
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+            Nilai Sensor Terkini
+          </div>
+
+          <div class="sensor-mini-card">
+            <div class="sensor-mini-title">
+              <span
+                style="
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 50%;
+                  background: #3b82f6;
+                  display: inline-block;
+                "
+              ></span>
+              Sensor 1 — Lengan Atas
+            </div>
+            <div class="sensor-grid">
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Ax</span>
+                <span class="sensor-cell-val" id="s1-ax">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Ay</span>
+                <span class="sensor-cell-val" id="s1-ay">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Az</span>
+                <span class="sensor-cell-val" id="s1-az">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gx</span>
+                <span class="sensor-cell-val" id="s1-gx">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gy</span>
+                <span class="sensor-cell-val" id="s1-gy">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gz</span>
+                <span class="sensor-cell-val" id="s1-gz">0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sensor-mini-card">
+            <div class="sensor-mini-title">
+              <span
+                style="
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 50%;
+                  background: #8b5cf6;
+                  display: inline-block;
+                "
+              ></span>
+              Sensor 2 — Pergelangan Tangan
+            </div>
+            <div class="sensor-grid">
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Ax</span>
+                <span class="sensor-cell-val" id="s2-ax">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Ay</span>
+                <span class="sensor-cell-val" id="s2-ay">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Az</span>
+                <span class="sensor-cell-val" id="s2-az">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gx</span>
+                <span class="sensor-cell-val" id="s2-gx">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gy</span>
+                <span class="sensor-cell-val" id="s2-gy">0.00</span>
+              </div>
+              <div class="sensor-cell">
+                <span class="sensor-cell-label">Gz</span>
+                <span class="sensor-cell-val" id="s2-gz">0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="history-section">
+          <div class="panel-section-title">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--accent-blue)"
+              stroke-width="2.2"
+            >
+              <polyline points="12 8 12 12 14 14" />
+              <path d="M3.05 11a9 9 0 1 0 .5-4" />
+              <polyline points="3 3 3 7 7 7" />
+            </svg>
+            Riwayat Prediksi
+          </div>
+
+          <div class="history-controls">
+            <input
+              type="text"
+              class="search-box"
+              id="history-search"
+              placeholder="Cari gerakan, skor..."
+              oninput="filterHistory()"
+            />
+            <button class="btn-download" onclick="downloadCSV()">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              CSV
+            </button>
+          </div>
+
+          <div class="history-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th onclick="sortHistory('waktu')">
+                    Waktu <span id="sort-waktu"></span>
+                  </th>
+                  <th onclick="sortHistory('gerakan')">
+                    Gerakan <span id="sort-gerakan"></span>
+                  </th>
+                  <th onclick="sortHistory('skor')">
+                    Skor <span id="sort-skor"></span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody">
+                <tr>
+                  <td
+                    colspan="3"
+                    style="
+                      text-align: center;
+                      color: var(--text-muted);
+                      padding: 20px 10px;
+                      font-size: 12px;
+                    "
+                  >
+                    Menunggu data latihan...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span id="page-info">0 data</span>
+            <div style="display: flex; gap: 5px">
+              <button
+                class="page-btn"
+                id="btn-prev"
+                onclick="changePage(-1)"
+                disabled
+              >
+                ←
+              </button>
+              <button
+                class="page-btn"
+                id="btn-next"
+                onclick="changePage(1)"
+                disabled
+              >
+                →
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+      // ============================================
+      // CONFIG
+      // ============================================
+      const MAX_CHART_POINTS = 50;
+      const API_INTERVAL = 300; // ms
+      const PRED_INTERVAL = 600; // ms
+      const HIST_INTERVAL = 5000; // ms
+      const PAGE_SIZE = 20;
+
+      const GERAKAN_LABELS = {
+        hand_to_mouth   : "HAND TO MOUTH",
+        hand_to_tophead : "HAND TO TOP HEAD",
+        hand_to_backhead: "HAND TO BACK HEAD",
+        cup             : "CUP",
+        big_tube        : "BIG TUBE",
+        small_tube      : "SMALL TUBE",
+        ring            : "RING"
+      };
+
+      const SCORE_COLORS = {
+        3: "var(--score-3)",
+        2: "var(--score-2)",
+        1: "var(--score-1)",
+        0: "var(--score-0)",
+      };
+
+      const SCORE_PILLS = {
+        3: { bg: "#DCFCE7", color: "#16A34A", text: "Gerakan Sempurna" },
+        2: {
+          bg: "#FEF9C3",
+          color: "#CA8A04",
+          text: "Gerakan Terjadi Namun Lambat",
+        },
+        1: { bg: "#FFEDD5", color: "#EA580C", text: "Gerakan Sangat Terbatas" },
+        0: { bg: "#FEE2E2", color: "#DC2626", text: "Tidak Ada Gerakan" },
+      };
+
+      // ============================================
+      // CHART SETUP
+      // ============================================
+      function makeChartData(label, color) {
+        return {
+          label,
+          data: [],
+          borderColor: color,
+          backgroundColor: color + "20",
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: false,
+        };
+      }
+
+      const chartColors = {
+        ax: "#3B82F6",
+        ay: "#8B5CF6",
+        az: "#06B6D4",
+        gx: "#F59E0B",
+        gy: "#10B981",
+        gz: "#EF4444",
+      };
+
+      const chartDefaults = {
+        type: "line",
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                font: { size: 9, family: "JetBrains Mono" },
+                padding: 6,
+                boxWidth: 9,
+              },
+            },
+          },
+          scales: {
+            x: { display: false },
+            y: {
+              display: true,
+              grid: { color: "#F1F5F9" },
+              ticks: {
+                font: { size: 9, family: "JetBrains Mono" },
+                maxTicksLimit: 5,
+              },
+            },
+          },
+        },
+      };
+
+      const chart1 = new Chart(document.getElementById("chart-sensor1"), {
+        ...chartDefaults,
+        data: {
+          labels: [],
+          datasets: [
+            makeChartData("Ax", chartColors.ax),
+            makeChartData("Ay", chartColors.ay),
+            makeChartData("Az", chartColors.az),
+            makeChartData("Gx", chartColors.gx),
+            makeChartData("Gy", chartColors.gy),
+            makeChartData("Gz", chartColors.gz),
+          ],
+        },
+      });
+
+      const chart2 = new Chart(document.getElementById("chart-sensor2"), {
+        ...chartDefaults,
+        data: {
+          labels: [],
+          datasets: [
+            makeChartData("Ax", chartColors.ax),
+            makeChartData("Ay", chartColors.ay),
+            makeChartData("Az", chartColors.az),
+            makeChartData("Gx", chartColors.gx),
+            makeChartData("Gy", chartColors.gy),
+            makeChartData("Gz", chartColors.gz),
+          ],
+        },
+      });
+
+      function pushToChart(chart, row_s1, row_s2) {
+        const keys1 = ["ax1", "ay1", "az1", "gx1", "gy1", "gz1"];
+        const keys2 = ["ax2", "ay2", "az2", "gx2", "gy2", "gz2"];
+
+        chart1.data.labels.push("");
+        chart2.data.labels.push("");
+
+        keys1.forEach((k, i) => {
+          chart1.data.datasets[i].data.push(row_s1[k] ?? 0);
+          if (chart1.data.datasets[i].data.length > MAX_CHART_POINTS)
+            chart1.data.datasets[i].data.shift();
+        });
+        keys2.forEach((k, i) => {
+          chart2.data.datasets[i].data.push(row_s2[k] ?? 0);
+          if (chart2.data.datasets[i].data.length > MAX_CHART_POINTS)
+            chart2.data.datasets[i].data.shift();
+        });
+
+        if (chart1.data.labels.length > MAX_CHART_POINTS)
+          chart1.data.labels.shift();
+        if (chart2.data.labels.length > MAX_CHART_POINTS)
+          chart2.data.labels.shift();
+
+        chart1.update("none");
+        chart2.update("none");
+      }
+
+      // ============================================
+      // DATETIME
+      // ============================================
+      function updateClock() {
+        const now = new Date();
+        document.getElementById("live-time").textContent =
+          now.toLocaleTimeString("id-ID", { hour12: false });
+        document.getElementById("live-date").textContent =
+          now.toLocaleDateString("id-ID", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          });
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // ============================================
+      // SENSOR DATA POLLING
+      // ============================================
+      async function fetchSensorData() {
+        try {
+          const res = await fetch("/api/latest-data");
+          const data = await res.json();
+
+          // Update sensor 1 display
+          const s1 = data.sensor1;
+          document.getElementById("s1-ax").textContent = (+s1.ax).toFixed(2);
+          document.getElementById("s1-ay").textContent = (+s1.ay).toFixed(2);
+          document.getElementById("s1-az").textContent = (+s1.az).toFixed(2);
+          document.getElementById("s1-gx").textContent = (+s1.gx).toFixed(2);
+          document.getElementById("s1-gy").textContent = (+s1.gy).toFixed(2);
+          document.getElementById("s1-gz").textContent = (+s1.gz).toFixed(2);
+
+          // Update sensor 2 display
+          const s2 = data.sensor2;
+          document.getElementById("s2-ax").textContent = (+s2.ax).toFixed(2);
+          document.getElementById("s2-ay").textContent = (+s2.ay).toFixed(2);
+          document.getElementById("s2-az").textContent = (+s2.az).toFixed(2);
+          document.getElementById("s2-gx").textContent = (+s2.gx).toFixed(2);
+          document.getElementById("s2-gy").textContent = (+s2.gy).toFixed(2);
+          document.getElementById("s2-gz").textContent = (+s2.gz).toFixed(2);
+
+          // Update chart with latest buffer
+          const buf = data.chart_data;
+          if (buf.length > 0) {
+            const last = buf[buf.length - 1];
+            pushToChart(null, last, last);
+          }
+
+          // MQTT status
+          const connected = data.connected;
+          const dot = document.getElementById("mqtt-status-dot");
+          const badge = document.getElementById("mqtt-badge");
+          const badgeTxt = document.getElementById("mqtt-badge-text");
+          if (connected) {
+            dot.className = "status-dot green";
+            document.getElementById("mqtt-status-text").textContent =
+              "Connected";
+            badge.className = "mqtt-indicator";
+            badgeTxt.textContent = "Live";
+          } else {
+            dot.className = "status-dot red";
+            document.getElementById("mqtt-status-text").textContent =
+              "Disconnected";
+            badge.className = "mqtt-indicator disconnected";
+            badgeTxt.textContent = "Disconnected";
+          }
+        } catch (e) {
+          /* silently fail */
+        }
+      }
+
+      // ============================================
+      // PREDICTION POLLING
+      // ============================================
+      let prevScore = null;
+
+      async function fetchPrediction() {
+        try {
+          const res = await fetch("/api/prediction");
+          const data = await res.json();
+
+          const scoreEl = document.getElementById("score-display");
+          const labelEl = document.getElementById("score-label");
+          const pillEl = document.getElementById("score-pill");
+          const blobEl = document.getElementById("score-blob");
+
+          if (data.status === "waiting") {
+            scoreEl.textContent = "—";
+            scoreEl.className = "score-color-3";
+            labelEl.textContent = "Menunggu Data Sensor...";
+            pillEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Initializing...`;
+            pillEl.style.background = "#F1F5F9";
+            pillEl.style.color = "var(--text-muted)";
+            blobEl.className = "score-bg-blob score-bg-3";
+          } else if (data.status === "measuring") {
+            scoreEl.textContent = "...";
+            scoreEl.className = "score-color-2";
+            labelEl.textContent = "Menganalisis Gerakan...";
+            pillEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Sedang Mengukur`;
+            pillEl.style.background = "#FEF3C7";
+            pillEl.style.color = "#D97706";
+            blobEl.className = "score-bg-blob score-bg-2";
+          } else {
+            const s = data.score;
+            if (s !== prevScore) {
+              // Animate score change
+              scoreEl.className = `score-color-${s} score-pop`;
+              setTimeout(() => scoreEl.classList.remove("score-pop"), 600);
+              prevScore = s;
+            }
+            scoreEl.textContent = s;
+            scoreEl.className += ` score-color-${s}`;
+            labelEl.textContent = data.label;
+
+            const pill = SCORE_PILLS[s] || SCORE_PILLS[0];
+            pillEl.textContent = pill.text;
+            pillEl.style.background = pill.bg;
+            pillEl.style.color = pill.color;
+
+            blobEl.className = `score-bg-blob score-bg-${s}`;
+          }
+
+          // Model status
+          const modelReady = data.model_ready;
+          const modelDot = document.getElementById("model-status-dot");
+          const modelTxt = document.getElementById("model-status-text");
+          modelDot.className = modelReady
+            ? "status-dot green"
+            : "status-dot red";
+          modelTxt.textContent = modelReady ? "Ready" : "Model Not Found";
+        } catch (e) {
+          /* silently fail */
+        }
+      }
+
+      // ============================================
+      // HISTORY
+      // ============================================
+      let historyAll = [];
+      let historyFiltered = [];
+      let currentPage = 1;
+      let sortKey = "waktu";
+      let sortAsc = false;
+
+      async function fetchHistory() {
+        try {
+          const res = await fetch("/api/history");
+          const data = await res.json();
+          historyAll = data.data || [];
+          applyFilter();
+        } catch (e) {}
+      }
+
+      function applyFilter() {
+        const q = (
+          document.getElementById("history-search").value || ""
+        ).toLowerCase();
+        historyFiltered = historyAll.filter((row) => {
+          return (
+            !q ||
+            (row.waktu || "").toLowerCase().includes(q) ||
+            (row.gerakan || "").toLowerCase().includes(q) ||
+            String(row.skor).includes(q)
+          );
+        });
+        sortHistoryData();
+        currentPage = 1;
+        renderHistory();
+      }
+
+      function filterHistory() {
+        applyFilter();
+      }
+
+      function sortHistory(key) {
+        if (sortKey === key) sortAsc = !sortAsc;
+        else {
+          sortKey = key;
+          sortAsc = true;
+        }
+        sortHistoryData();
+        renderHistory();
+        // Update icons
+        ["waktu", "gerakan", "skor"].forEach((k) => {
+          document.getElementById(`sort-${k}`).textContent =
+            sortKey === k ? (sortAsc ? "↑" : "↓") : "";
+        });
+      }
+
+      function sortHistoryData() {
+        historyFiltered.sort((a, b) => {
+          let av = a[sortKey],
+            bv = b[sortKey];
+          if (sortKey === "skor") {
+            av = +av;
+            bv = +bv;
+          }
+          if (av < bv) return sortAsc ? -1 : 1;
+          if (av > bv) return sortAsc ? 1 : -1;
+          return 0;
+        });
+      }
+
+      function renderHistory() {
+        const tbody = document.getElementById("history-tbody");
+        const total = historyFiltered.length;
+        const pages = Math.ceil(total / PAGE_SIZE) || 1;
+        if (currentPage > pages) currentPage = pages;
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const slice = historyFiltered.slice(start, start + PAGE_SIZE);
+
+        document.getElementById("page-info").textContent =
+          `${total} data · hal ${currentPage}/${pages}`;
+        document.getElementById("btn-prev").disabled = currentPage <= 1;
+        document.getElementById("btn-next").disabled = currentPage >= pages;
+
+        if (slice.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px 10px;font-size:12px">Belum ada data</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = slice
+          .map((row) => {
+            const s = row.skor;
+            const waktu = (row.waktu || "").split(" ")[1] || row.waktu;
+            const badgeClass = ["s0", "s1", "s2", "s3"][s] || "s0";
+            return `<tr class="fade-in">
+      <td style="color:var(--text-muted);font-size:11px;font-family:'JetBrains Mono',monospace">${waktu}</td>
+      <td style="font-size:11.5px;font-weight:500">${(row.gerakan || "").replace(/_/g, " ")}</td>
+      <td><span class="score-badge ${badgeClass}">${s}</span></td>
+    </tr>`;
+          })
+          .join("");
+      }
+
+      function changePage(delta) {
+        currentPage += delta;
+        renderHistory();
+      }
+
+      // ============================================
+      // MODEL SELECTION
+      // ============================================
+      function selectModel(key, el) {
+        // Update sidebar UI
+        document
+          .querySelectorAll(".menu-item")
+          .forEach((m) => m.classList.remove("active"));
+        el.classList.add("active");
+
+        // Update active movement display
+        const label = GERAKAN_LABELS[key] || key.toUpperCase();
+        const nameEl = document.getElementById("active-movement-name");
+        nameEl.style.opacity = "0";
+        setTimeout(() => {
+          nameEl.textContent = label;
+          nameEl.style.opacity = "1";
+        }, 150);
+
+        // Update model sub label
+        document.getElementById("model-status-sub").textContent = key;
+
+        // Send to backend
+        fetch("/select-model", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gerakan: key }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            const modelDot = document.getElementById("model-status-dot");
+            const modelTxt = document.getElementById("model-status-text");
+            modelDot.className = data.model_ready
+              ? "status-dot green"
+              : "status-dot red";
+            modelTxt.textContent = data.model_ready
+              ? "Ready"
+              : "Model Not Found";
+          })
+          .catch(() => {});
+      }
+
+      // ============================================
+      // DOWNLOAD CSV
+      // ============================================
+      function downloadCSV() {
+        const a = document.createElement("a");
+        a.href = "/download-log";
+        a.click();
+      }
+
+      // ============================================
+      // START POLLING
+      // ============================================
+      fetchSensorData();
+      fetchPrediction();
+      fetchHistory();
+
+      setInterval(fetchSensorData, API_INTERVAL);
+      setInterval(fetchPrediction, PRED_INTERVAL);
+      setInterval(fetchHistory, HIST_INTERVAL);
+    </script>
+  </body>
+</html>
